@@ -19,7 +19,7 @@ curl -O https://raw.githubusercontent.com/qzz0518/nexus-run/refs/heads/main/nexu
 
 ## 系统要求
 
-- Linux (AMD64) 或 macOS (ARM64)
+- Linux (AMD64) 或 macOS (m系列芯片或者intel芯片)
 - 支持 APT 或 YUM 的包管理器（Linux）
 - Homebrew（macOS）
 
