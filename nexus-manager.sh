@@ -5,13 +5,15 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+VERSION="0.4.4"
+
 NEXUS_HOME="$HOME/.nexus"
 PROVER_ID_FILE="$NEXUS_HOME/prover-id"
 SESSION_NAME="nexus-prover"
 PROGRAM_DIR="$NEXUS_HOME/src/generated"
 ARCH=$(uname -m)
 OS=$(uname -s)
-REPO_BASE="https://github.com/nexus-xyz/network-api/raw/refs/tags/0.4.2/clients/cli"
+REPO_BASE="https://github.com/nexus-xyz/network-api/raw/refs/tags/$VERSION/clients/cli"
 
 check_openssl_version() {
     # 仅在Linux系统下检查OpenSSL版本
@@ -104,10 +106,10 @@ download_prover() {
         if [ "$OS" = "Darwin" ]; then
             if [ "$ARCH" = "x86_64" ]; then
                 echo -e "${YELLOW}下载 macOS Intel 架构 Prover...${NC}"
-                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v0.4.2/prover-macos-amd64" -o "$prover_path"
+                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/prover-macos-amd64" -o "$prover_path"
             elif [ "$ARCH" = "arm64" ]; then
                 echo -e "${YELLOW}下载 macOS ARM64 架构 Prover...${NC}"
-                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v0.4.2/prover-arm64" -o "$prover_path"
+                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/prover-arm64" -o "$prover_path"
             else
                 echo -e "${RED}不支持的 macOS 架构: $ARCH${NC}"
                 exit 1
@@ -115,7 +117,7 @@ download_prover() {
         elif [ "$OS" = "Linux" ]; then
             if [ "$ARCH" = "x86_64" ]; then
                 echo -e "${YELLOW}下载 Linux AMD64 架构 Prover...${NC}"
-                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v0.4.2/prover-amd64" -o "$prover_path"
+                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/prover-amd64" -o "$prover_path"
             else
                 echo -e "${RED}不支持的 Linux 架构: $ARCH${NC}"
                 exit 1
@@ -227,6 +229,30 @@ stop_prover() {
     fi
 }
 
+update_nexus() {
+    echo -e "${YELLOW}开始更新 Nexus...${NC}"
+
+    # 先停止运行中的 Prover
+    stop_prover
+
+    # 删除现有文件
+    echo -e "${YELLOW}删除现有文件...${NC}"
+    rm -f "$NEXUS_HOME/prover"
+    rm -rf "$PROGRAM_DIR"/*
+
+    # 重新安装
+    echo -e "${YELLOW}重新安装 Nexus...${NC}"
+    setup_directories
+    check_dependencies
+    download_files
+
+    echo -e "${GREEN}更新完成！正在启动 Nexus...${NC}"
+
+    # 启动 Prover
+    start_prover
+}
+
+
 cleanup() {
     echo -e "\n${YELLOW}正在清理...${NC}"
     exit 0
@@ -236,6 +262,7 @@ trap cleanup SIGINT SIGTERM
 
 while true; do
     echo -e "\n${YELLOW}=== Nexus Prover 管理工具 ===${NC}"
+    echo -e "${GREEN}当前版本: ${NC}v$VERSION"
     echo -e "${GREEN}Twitter: ${NC}https://x.com/zerah_eth"
     echo -e "${GREEN}Github: ${NC}https://github.com/qzz0518/nexus-run"
     echo -e "${GREEN}推荐工具: ${NC}SOL 回收神器 - https://solback.app/\n"
@@ -245,9 +272,10 @@ while true; do
     echo "3. 查看 Prover ID"
     echo "4. 设置 Prover ID"
     echo "5. 停止 Nexus"
-    echo "6. 退出"
+    echo "6. 更新 Nexus"
+    echo "7. 退出"
 
-    read -p "请选择操作 [1-6]: " choice
+    read -p "请选择操作 [1-7]: " choice
     case $choice in
         1)
             setup_directories
@@ -268,6 +296,9 @@ while true; do
             stop_prover
             ;;
         6)
+            update_nexus
+            ;;
+        7)
             echo -e "\n${GREEN}感谢使用！${NC}"
             echo -e "${YELLOW}更多工具请关注 Twitter: ${NC}https://x.com/zerah_eth"
             echo -e "${YELLOW}SOL 代币回收工具: ${NC}https://solback.app/\n"
