@@ -38,6 +38,7 @@ curl -O https://raw.githubusercontent.com/qzz0518/nexus-run/refs/heads/main/nexu
 - 查看运行状态时请使用关闭终端或者 Ctrl+B 再按 D 的方式退出，不要使用 Ctrl+C
 - 程序会自动在后台运行，无需保持终端开启
 - 服务器内存至少要有 2G RAM，不然会闪退
+- 请确认你的服务器已经安装 openssl3 及以上版本，不然会启动失败
 
 ## 关于 Prover ID 的说明
 如果你想在网页上的看到自己的 POINTS ,点击左下角 My Profile 如下图显示的话，你需要使用网页接口的形式获取并使用你的 localId 才能够显示（这里可能有个坑，如果你在CLI跑可能真的需要这个完整的ID才有效，你使用网页版截取的前8位的可能是无效的）。
