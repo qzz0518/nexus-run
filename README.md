@@ -5,7 +5,7 @@
 ## 特性
 
 - 自动检测并安装依赖
-- 支持 AMD64 Linux 和 ARM64 macOS
+- 支持 Linux 和 macOS
 - 一键安装并启动 Nexus Prover
 - Prover ID 管理
 - 运行状态监控
@@ -19,7 +19,7 @@ curl -O https://raw.githubusercontent.com/qzz0518/nexus-run/refs/heads/main/nexu
 
 ## 系统要求
 
-- Linux (AMD64) 或 macOS (m系列芯片或者intel芯片)
+- Linux (AMD64 和 ARM64) 或 macOS (M系列芯片或者Intel芯片)
 - 支持 APT 或 YUM 的包管理器（Linux）
 - Homebrew（macOS）
 
