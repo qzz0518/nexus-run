@@ -268,7 +268,7 @@ while true; do
     echo -e "${GREEN}当前版本: ${NC}v$VERSION"
     echo -e "${GREEN}Twitter: ${NC}https://x.com/zerah_eth"
     echo -e "${GREEN}Github: ${NC}https://github.com/qzz0518/nexus-run"
-    echo -e "${GREEN}推荐工具: ${NC}SOL 回收神器 - https://solback.app/\n"
+    echo -e "${GREEN}免费领SOL: ${NC}SOL 回血神器 - https://solback.app/\n"
 
     echo "1. 安装并启动 Nexus"
     echo "2. 查看当前运行状态"
