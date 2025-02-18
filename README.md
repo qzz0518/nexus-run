@@ -87,7 +87,7 @@ console.log(localStorage.getItem('flutter.proverId'));
 
 ## 推荐工具
 
-- SOL 回收工具: [SOLBack](https://solback.app/)
+- 免费领 SOL: [SOLBack](https://solback.app/)
 
 ## 相关链接
 
