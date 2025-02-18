@@ -5,7 +5,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-VERSION="0.4.4"
+VERSION="0.4.7"
 
 NEXUS_HOME="$HOME/.nexus"
 PROVER_ID_FILE="$NEXUS_HOME/prover-id"
