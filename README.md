@@ -5,7 +5,7 @@
 ## 特性
 
 - 自动检测并安装依赖
-- 支持 AMD64 Linux 和 ARM64 macOS
+- 支持 Linux 和 macOS
 - 一键安装并启动 Nexus Prover
 - Prover ID 管理
 - 运行状态监控
@@ -19,7 +19,7 @@ curl -O https://raw.githubusercontent.com/qzz0518/nexus-run/refs/heads/main/nexu
 
 ## 系统要求
 
-- Linux (AMD64) 或 macOS (m系列芯片或者intel芯片)
+- Linux (AMD64 和 ARM64) 或 macOS (M系列芯片或者Intel芯片)
 - 支持 APT 或 YUM 的包管理器（Linux）
 - Homebrew（macOS）
 
@@ -38,6 +38,7 @@ curl -O https://raw.githubusercontent.com/qzz0518/nexus-run/refs/heads/main/nexu
 - 查看运行状态时请使用关闭终端或者 Ctrl+B 再按 D 的方式退出，不要使用 Ctrl+C
 - 程序会自动在后台运行，无需保持终端开启
 - 服务器内存至少要有 2G RAM，不然会闪退
+- 请确认你的服务器已经安装 openssl3 及以上版本，不然会启动失败
 
 ## 关于 Prover ID 的说明
 如果你想在网页上的看到自己的 POINTS ,点击左下角 My Profile 如下图显示的话，你需要使用网页接口的形式获取并使用你的 localId 才能够显示（这里可能有个坑，如果你在CLI跑可能真的需要这个完整的ID才有效，你使用网页版截取的前8位的可能是无效的）。
