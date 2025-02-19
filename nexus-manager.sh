@@ -53,6 +53,15 @@ check_and_install_rust() {
             exit 1
         fi
     fi
+
+    # 添加 RISC-V 目标
+    echo -e "${YELLOW}正在安装 RISC-V 目标...${NC}"
+    rustup target add riscv32i-unknown-none-elf
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}RISC-V 目标安装失败${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}RISC-V 目标安装成功${NC}"
 }
 
 setup_directories() {
