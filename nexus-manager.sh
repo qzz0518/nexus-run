@@ -5,303 +5,254 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-VERSION="0.4.7"
+VERSION="0.5.0"
 
 NEXUS_HOME="$HOME/.nexus"
-PROVER_ID_FILE="$NEXUS_HOME/prover-id"
-SESSION_NAME="nexus-prover"
-PROGRAM_DIR="$NEXUS_HOME/src/generated"
+NODE_ID_FILE="$NEXUS_HOME/node-id"
+SESSION_NAME="nexus-network"
 ARCH=$(uname -m)
 OS=$(uname -s)
-REPO_BASE="https://github.com/nexus-xyz/network-api/raw/refs/tags/$VERSION/clients/cli"
 
-check_openssl_version() {
-    # 仅在Linux系统下检查OpenSSL版本
-    if [ "$OS" = "Linux" ]; then
-        if ! command -v openssl &> /dev/null; then
-            echo -e "${RED}未安装 OpenSSL${NC}"
-            return 1
-        fi
-
-        local version=$(openssl version | cut -d' ' -f2)
-        local major_version=$(echo $version | cut -d'.' -f1)
-
-        if [ "$major_version" -lt "3" ]; then
-            if command -v apt &> /dev/null; then
-                echo -e "${YELLOW}当前 OpenSSL 版本过低，正在升级...${NC}"
-                sudo apt update
-                sudo apt install -y openssl
-                if [ $? -ne 0 ]; then
-                    echo -e "${RED}OpenSSL 升级失败，请手动升级至 3.0 或更高版本${NC}"
-                    return 1
-                fi
-            elif command -v yum &> /dev/null; then
-                echo -e "${YELLOW}当前 OpenSSL 版本过低，正在升级...${NC}"
-                sudo yum update -y openssl
-                if [ $? -ne 0 ]; then
-                    echo -e "${RED}OpenSSL 升级失败，请手动升级至 3.0 或更高版本${NC}"
-                    return 1
-                fi
-            else
-                echo -e "${RED}请手动升级 OpenSSL 至 3.0 或更高版本${NC}"
-                return 1
-            fi
-        fi
-        echo -e "${GREEN}OpenSSL 版本检查通过${NC}"
-    fi
-    return 0
-}
-
-setup_directories() {
-    mkdir -p "$PROGRAM_DIR"
-    ln -sf "$PROGRAM_DIR" "$NEXUS_HOME/src/generated"
-}
-
-check_dependencies() {
-    # 添加OpenSSL检查
-    check_openssl_version || exit 1
-
-    if ! command -v tmux &> /dev/null; then
-        echo -e "${YELLOW}tmux 未安装, 正在安装...${NC}"
+check_and_install_git() {
+    if ! command -v git &> /dev/null; then
         if [ "$OS" = "Darwin" ]; then
             if ! command -v brew &> /dev/null; then
                 echo -e "${RED}请先安装 Homebrew: https://brew.sh${NC}"
                 exit 1
             fi
-            brew install tmux
+            brew install git
         elif [ "$OS" = "Linux" ]; then
             if command -v apt &> /dev/null; then
-                sudo apt update && sudo apt install -y tmux
+                echo -e "${YELLOW}正在安装 git...${NC}"
+                sudo apt update && sudo apt install -y git
             elif command -v yum &> /dev/null; then
-                sudo yum install -y tmux
+                echo -e "${YELLOW}正在安装 git...${NC}"
+                sudo yum install -y git
             else
-                echo -e "${RED}未能识别的包管理器，请手动安装 tmux${NC}"
-                exit 1
-            fi
-        fi
-    fi
-}
-
-download_program_files() {
-    local files="cancer-diagnostic fast-fib"
-
-    for file in $files; do
-        local target_path="$PROGRAM_DIR/$file"
-        if [ ! -f "$target_path" ]; then
-            echo -e "${YELLOW}下载 $file...${NC}"
-            curl -L "$REPO_BASE/src/generated/$file" -o "$target_path"
-            if [ $? -eq 0 ]; then
-                echo -e "${GREEN}$file 下载完成${NC}"
-                chmod +x "$target_path"
-            else
-                echo -e "${RED}$file 下载失败${NC}"
-            fi
-        fi
-    done
-}
-
-download_prover() {
-    local prover_path="$NEXUS_HOME/prover"
-    if [ ! -f "$prover_path" ]; then
-        if [ "$OS" = "Darwin" ]; then
-            if [ "$ARCH" = "x86_64" ]; then
-                echo -e "${YELLOW}下载 macOS Intel 架构 Prover...${NC}"
-                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/prover-macos-amd64" -o "$prover_path"
-            elif [ "$ARCH" = "arm64" ]; then
-                echo -e "${YELLOW}下载 macOS ARM64 架构 Prover...${NC}"
-                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/prover-arm64" -o "$prover_path"
-            else
-                echo -e "${RED}不支持的 macOS 架构: $ARCH${NC}"
-                exit 1
-            fi
-        elif [ "$OS" = "Linux" ]; then
-            if [ "$ARCH" = "x86_64" ]; then
-                echo -e "${YELLOW}下载 Linux AMD64 架构 Prover...${NC}"
-                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/prover-amd64" -o "$prover_path"
-            elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-                echo -e "${YELLOW}下载 Linux ARM64 架构 Prover...${NC}"
-                curl -L "https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/prover-linux-arm64" -o "$prover_path"
-            else
-                echo -e "${RED}不支持的 Linux 架构: $ARCH${NC}"
+                echo -e "${RED}未能识别的包管理器，请手动安装 git${NC}"
                 exit 1
             fi
         else
-            echo -e "${RED}不支持的操作系统: $OS${NC}"
+            echo -e "${RED}不支持的操作系统${NC}"
             exit 1
         fi
-        chmod +x "$prover_path"
-        echo -e "${GREEN}Prover 下载完成${NC}"
     fi
 }
 
-download_files() {
-    download_prover
-    download_program_files
-}
-
-generate_prover_id() {
-    local temp_output=$(mktemp)
-    tail -f "$temp_output" &
-    local tail_pid=$!
-
-    "./prover" beta.orchestrator.nexus.xyz > "$temp_output" 2>&1 &
-    local prover_pid=$!
-
-    # 等待直到看到成功连接的消息
-    while ! grep -q "Success! Connection complete!" "$temp_output" 2>/dev/null; do
-        if ! kill -0 $prover_pid 2>/dev/null; then
-            break
+check_and_install_rust() {
+    # 检查是否存在 cargo env 文件并激活环境
+    if [ -f "$HOME/.cargo/env" ]; then
+        echo -e "${YELLOW}检测到已安装 Rust，正在激活环境...${NC}"
+        source "$HOME/.cargo/env"
+    elif ! command -v rustc &> /dev/null; then
+        echo -e "${YELLOW}Rust未安装，正在安装...${NC}"
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        source "$HOME/.cargo/env"
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Rust安装失败${NC}"
+            exit 1
         fi
-        sleep 1
-    done
-
-    kill $prover_pid 2>/dev/null
-    kill $tail_pid 2>/dev/null
-
-    local prover_id=$(grep -o 'Your current prover identifier is [^ ]*' "$temp_output" | cut -d' ' -f6)
-    if [ -n "$prover_id" ]; then
-        echo "$prover_id" > "$PROVER_ID_FILE"
-        echo -e "${GREEN}已生成并保存新的 Prover ID: $prover_id${NC}"
-    else
-        echo -e "${RED}生成 Prover ID 失败${NC}"
     fi
-    rm "$temp_output"
 }
 
-start_prover() {
+setup_directories() {
+    if [ ! -d "$NEXUS_HOME" ]; then
+        echo -e "${YELLOW}创建 $NEXUS_HOME 目录...${NC}"
+        mkdir -p "$NEXUS_HOME"
+    fi
+
+    if [ ! -d "$NEXUS_HOME/network-api" ]; then
+        echo -e "${YELLOW}克隆network-api仓库...${NC}"
+        cd "$NEXUS_HOME"
+        git clone https://github.com/nexus-xyz/network-api.git
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}仓库克隆失败${NC}"
+            exit 1
+        fi
+    fi
+}
+
+check_system_compatibility() {
+    local is_compatible=false
+    if [ "$OS" = "Linux" ] && [ "$ARCH" = "x86_64" ]; then
+        is_compatible=true
+        BINARY_URL="https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/nexus-network-linux-x86"
+        EXAMPLE_URL="https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/example-linux-x86"
+    elif [ "$OS" = "Darwin" ] && [ "$ARCH" = "arm64" ]; then
+        is_compatible=true
+        BINARY_URL="https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/nexus-network-macos-arm64"
+        EXAMPLE_URL="https://github.com/qzz0518/nexus-run/releases/download/v$VERSION/example-macos-arm64"
+    fi
+
+    if [ "$is_compatible" = false ]; then
+        echo -e "${RED}不支持的系统或架构: $OS $ARCH${NC}"
+        exit 1
+    fi
+}
+
+download_binary() {
+    local binary_path="$NEXUS_HOME/network-api/clients/cli/nexus-network"
+    local example_path="$NEXUS_HOME/network-api/clients/cli/example"
+    
+    if [ ! -f "$binary_path" ]; then
+        echo -e "${YELLOW}下载主程序...${NC}"
+        curl -L "$BINARY_URL" -o "$binary_path"
+        if [ $? -eq 0 ]; then
+            chmod +x "$binary_path"
+            echo -e "${GREEN}主程序下载完成${NC}"
+        else
+            echo -e "${RED}主程序下载失败${NC}"
+            exit 1
+        fi
+    fi
+
+    if [ ! -f "$example_path" ]; then
+        echo -e "${YELLOW}下载 example 程序...${NC}"
+        curl -L "$EXAMPLE_URL" -o "$example_path"
+        if [ $? -eq 0 ]; then
+            chmod +x "$example_path"
+            echo -e "${GREEN}example 程序下载完成${NC}"
+        else
+            echo -e "${RED}example 程序下载失败${NC}"
+            exit 1
+        fi
+    fi
+}
+
+start_network() {
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        echo -e "${YELLOW}Prover 已在运行中，请选择2查看运行日志${NC}"
+        echo -e "${YELLOW}Network已在运行中，请选择3查看运行日志${NC}"
         return
     fi
 
-    cd "$NEXUS_HOME" || exit
+    cd "$NEXUS_HOME/network-api/clients/cli" || exit
 
-    if [ ! -f "$PROVER_ID_FILE" ]; then
-        echo -e "${YELLOW}请输入您的 Prover ID${NC}"
-        echo -e "${YELLOW}如果您还没有 Prover ID，直接按回车将自动生成${NC}"
-        read -p "Prover ID > " input_id
-
-        if [ -n "$input_id" ]; then
-            echo "$input_id" > "$PROVER_ID_FILE"
-            echo -e "${GREEN}已保存 Prover ID: $input_id${NC}"
-        else
-            echo -e "${YELLOW}将自动生成新的 Prover ID...${NC}"
-        fi
-    fi
-
-    tmux new-session -d -s "$SESSION_NAME" "cd '$NEXUS_HOME' && ./prover rpc.nexus.xyz/ws"
-    echo -e "${GREEN}Prover 已启动，选择2可查看运行日志${NC}"
+    tmux new-session -d -s "$SESSION_NAME" "cd '$NEXUS_HOME/network-api/clients/cli' && ./nexus-network --start --beta"
+    echo -e "${GREEN}Network已启动，选择3可查看运行日志${NC}"
 }
 
 check_status() {
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-        echo -e "${GREEN}Prover 正在运行中. 正在打开日志窗口...${NC}"
+        echo -e "${GREEN}Network正在运行中. 正在打开日志窗口...${NC}"
         echo -e "${YELLOW}提示: 查看完成后直接关闭终端即可，不要使用 Ctrl+C${NC}"
         sleep 2
         tmux attach-session -t "$SESSION_NAME"
     else
-        echo -e "${RED}Prover 未运行${NC}"
+        echo -e "${RED}Network未运行${NC}"
     fi
 }
 
-show_prover_id() {
-    if [ -f "$PROVER_ID_FILE" ]; then
-        local id=$(cat "$PROVER_ID_FILE")
-        echo -e "${GREEN}当前 Prover ID: $id${NC}"
+show_node_id() {
+    if [ -f "$NODE_ID_FILE" ]; then
+        local id=$(cat "$NODE_ID_FILE")
+        echo -e "${GREEN}当前 Node ID: $id${NC}"
     else
-        echo -e "${RED}未找到 Prover ID${NC}"
+        echo -e "${RED}未找到 Node ID${NC}"
     fi
 }
 
-set_prover_id() {
-    read -p "请输入新的 Prover ID: " new_id
+set_node_id() {
+    read -p "请输入新的 Node ID: " new_id
     if [ -n "$new_id" ]; then
-        echo "$new_id" > "$PROVER_ID_FILE"
-        echo -e "${GREEN}Prover ID 已更新${NC}"
+        echo "$new_id" > "$NODE_ID_FILE"
+        echo -e "${GREEN}Node ID 已更新${NC}"
     else
-        echo -e "${RED}Prover ID 不能为空${NC}"
+        echo -e "${RED}Node ID 不能为空${NC}"
     fi
 }
 
-stop_prover() {
+stop_network() {
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
         tmux kill-session -t "$SESSION_NAME"
-        echo -e "${GREEN}Prover 已停止${NC}"
+        echo -e "${GREEN}Network已停止${NC}"
     else
-        echo -e "${RED}Prover 未运行${NC}"
+        echo -e "${RED}Network未运行${NC}"
     fi
 }
 
 update_nexus() {
     echo -e "${YELLOW}开始更新 Nexus...${NC}"
 
-    # 先停止运行中的 Prover
-    stop_prover
+    stop_network
 
-    # 删除现有文件
-    echo -e "${YELLOW}删除现有文件...${NC}"
-    rm -f "$NEXUS_HOME/prover"
-    rm -rf "$PROGRAM_DIR"/*
+    cd "$NEXUS_HOME/network-api"
+    git pull
 
-    # 重新安装
-    echo -e "${YELLOW}重新安装 Nexus...${NC}"
-    setup_directories
-    check_dependencies
-    download_files
+    rm -f "$NEXUS_HOME/network-api/clients/cli/nexus-network"
+    rm -f "$NEXUS_HOME/network-api/clients/cli/example"
+    download_binary
 
-    echo -e "${GREEN}更新完成！正在启动 Nexus...${NC}"
-
-    # 启动 Prover
-    start_prover
+    echo -e "${GREEN}更新完成！正在启动 Network...${NC}"
+    start_network
 }
-
 
 cleanup() {
     echo -e "\n${YELLOW}正在清理...${NC}"
     exit 0
 }
 
+install_network() {
+    echo -e "${YELLOW}开始安装 Nexus Network...${NC}"
+    check_system_compatibility
+    check_and_install_git
+    check_and_install_rust
+    setup_directories
+    download_binary
+    echo -e "${GREEN}安装完成！${NC}"
+}
+
 trap cleanup SIGINT SIGTERM
 
 while true; do
-    echo -e "\n${YELLOW}=== Nexus Prover 管理工具 ===${NC}"
+    echo -e "\n${YELLOW}=== Nexus Network 管理工具 ===${NC}"
     echo -e "${GREEN}当前版本: ${NC}v$VERSION"
     echo -e "${GREEN}Twitter: ${NC}https://x.com/zerah_eth"
     echo -e "${GREEN}Github: ${NC}https://github.com/qzz0518/nexus-run"
     echo -e "${GREEN}免费领SOL: ${NC}SOL 回血神器 - https://solback.app/\n"
 
-    echo "1. 安装并启动 Nexus"
-    echo "2. 查看当前运行状态"
-    echo "3. 查看 Prover ID"
-    echo "4. 设置 Prover ID"
-    echo "5. 停止 Nexus"
-    echo "6. 更新 Nexus"
-    echo "7. 退出"
+    echo "1. 安装 Network"
+    echo "2. 启动 Network"
+    echo "3. 查看当前运行状态"
+    echo "4. 查看 Node ID"
+    echo "5. 设置 Node ID"
+    echo "6. 停止 Network"
+    echo "7. 更新 Network"
+    echo "8. 退出"
 
-    read -p "请选择操作 [1-7]: " choice
+    read -p "请选择操作 [1-8]: " choice
     case $choice in
         1)
-            setup_directories
-            check_dependencies
-            download_files
-            start_prover
+            install_network
             ;;
         2)
-            check_status
+            if [ ! -f "$NEXUS_HOME/network-api/clients/cli/nexus-network" ]; then
+                echo -e "${RED}请先安装 Network（选项1）${NC}"
+            else
+                if [ ! -f "$NODE_ID_FILE" ]; then
+                    echo -e "${YELLOW}未检测到 Node ID，请先设置${NC}"
+                    set_node_id
+                fi
+                if [ -f "$NODE_ID_FILE" ]; then
+                    start_network
+                fi
+            fi
             ;;
         3)
-            show_prover_id
+            check_status
             ;;
         4)
-            set_prover_id
+            show_node_id
             ;;
         5)
-            stop_prover
+            set_node_id
             ;;
         6)
-            update_nexus
+            stop_network
             ;;
         7)
+            update_nexus
+            ;;
+        8)
             echo -e "\n${GREEN}感谢使用！${NC}"
             echo -e "${YELLOW}更多工具请关注 Twitter: ${NC}https://x.com/zerah_eth"
             echo -e "${YELLOW}SOL 代币回收工具: ${NC}https://solback.app/\n"
